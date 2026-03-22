@@ -1,0 +1,31 @@
+#!/bin/zsh --no-rcs
+
+# Extension Attribute: Intel Only Apps (x86_64 only, no Universal)
+# v1.0
+# Copyright (c) 2026 Omer Ninyo, Wediggit Ltd.
+# Released under the MIT License.
+# Purpose: identifies Intel-only apps to support cleanup and readiness efforts
+# before Intel support is removed in macOS 27 and Rosetta translation support is removed in macOS 28.
+# Please keep this notice if you reuse or modify this script.
+
+intelApps=""
+
+while read -r appPath; do
+    if [[ -d "$appPath/Contents/MacOS/" ]]; then
+        binaryInfo=$(/usr/bin/file "$appPath/Contents/MacOS/"* 2>/dev/null | head -1)
+
+        if echo "$binaryInfo" | grep -q "x86_64.*executable" && \
+           echo "$binaryInfo" | grep -vq "universal|arm64"; then
+            appName=$(basename "$appPath" .app)
+            intelApps="${intelApps}${appName}, "
+        fi
+    fi
+done < <(/usr/bin/mdfind 'kMDItemKind == "Application" && kMDItemFSName == "*.app"')
+
+result=$(echo "$intelApps" | sed 's/, $//')
+
+if [[ -z "$result" ]]; then
+    echo "<result>No Intel-only apps</result>"
+else
+    echo "<result>$result</result>"
+fi
